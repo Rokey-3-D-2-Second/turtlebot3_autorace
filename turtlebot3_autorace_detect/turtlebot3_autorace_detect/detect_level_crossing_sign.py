@@ -115,12 +115,24 @@ class DetectSign(Node):
             cv_image_input = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         elif self.sub_image_type == 'raw':
             cv_image_input = self.cvBridge.imgmsg_to_cv2(image_msg, 'bgr8')
+        
+        # -------- [1] ROI: 위쪽 절반만 사용 --------
+        h, w, _ = cv_image_input.shape
+        # roi_y = 0               # 시작 y좌표
+        # roi_h = int(h * 0.4)    # 상단 40%
+        # cv_image_roi = cv_image_input[roi_y:roi_y+roi_h, :]
+        roi_w = int(w * 0.5)  # ROI 너비 (50%)
+        roi_h = int(h * 0.6)  # ROI 높이 (60%)
+        roi_x = w - roi_w     # 오른쪽에서 시작 (전체 가로 - ROI 너비)
+        roi_y = 0             # 맨 위에서 시
+        cv_image_roi = cv_image_input[roi_y:roi_y+roi_h, roi_x:roi_x+roi_w]
 
-        MIN_MATCH_COUNT = 4
+        MIN_MATCH_COUNT = 7
         MIN_MSE_DECISION = 50000
 
         # find the keypoints and descriptors with SIFT
-        kp1, des1 = self.sift.detectAndCompute(cv_image_input, None)
+        # kp1, des1 = self.sift.detectAndCompute(cv_image_input, None)
+        kp1, des1 = self.sift.detectAndCompute(cv_image_roi, None)
 
         matches_stop = self.flann.knnMatch(des1, self.des_stop, k=2)
 
@@ -174,10 +186,21 @@ class DetectSign(Node):
                 'matchesMask': matches_stop,  # draw only inliers
                 'flags': 2
             }
-
+            # kp1 좌표를 원본 이미지 기준으로 변환
+            kp1_on_input = [
+                cv2.KeyPoint(
+                    kp.pt[0] + roi_x,  # x좌표 보정
+                    kp.pt[1] + roi_y,  # y좌표 보정
+                    kp.size,
+                    kp.angle,
+                    kp.response,
+                    kp.octave,
+                    kp.class_id
+                ) for kp in kp1
+            ]
             final_stop = cv2.drawMatches(
                 cv_image_input,
-                kp1,
+                kp1_on_input,
                 self.img_stop,
                 self.kp_stop,
                 good_stop,

@@ -16,6 +16,7 @@
 #
 # Author: Leon Jung, Gilbert, Ashe Kim, ChanHyeong Lee
 
+import collections
 import time
 
 import cv2
@@ -29,6 +30,8 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import CompressedImage
 from sensor_msgs.msg import Image
+from std_msgs.msg import UInt8
+from std_msgs.msg import Bool
 
 
 class DetectTrafficLight(Node):
@@ -177,6 +180,20 @@ class DetectTrafficLight(Node):
         self.stop_count = 0
         self.off_traffic = False
 
+        # 1. 표지판(차단봉/교차로 등) 최근 감지시각 저장용 deque
+        self.traffic_sign_detect_times = collections.deque(maxlen=10)
+        # self.level_sign_detect_times = collections.deque(maxlen=10)
+        self.level_bar_detect_times = collections.deque(maxlen=10)
+        self.check_window_sec = 1.5        # 1.5초 윈도우 내에서 N회 감지되면 신호 무시
+        self.check_min_count = 2           # 표지판 감지 N회 이상이면 무시
+
+        # 2. 표지판 토픽 구독 (이미지 → UInt8로 변경)
+        self.create_subscription(
+            UInt8, '/detect/traffic_sign', self.cb_traffic_sign, 1)
+        # self.create_subscription(
+        #     CompressedImage, '/detect/image_level/compressed', self.cb_level_sign, 1)
+        self.create_subscription(Bool, '/detect/level_bar', self.cb_level_bar, 1)
+
         time.sleep(1)
         self.timer = self.create_timer(0.1, self.timer_callback)
 
@@ -262,27 +279,62 @@ class DetectTrafficLight(Node):
         if self.is_image_available:
             self.find_traffic_light()
 
+    # 표지판 메시지 올 때마다 현재 시각 기록 (UInt8만 기록)
+    def cb_traffic_sign(self, msg):
+        self.traffic_sign_detect_times.append(time.time())
+
+    # 표지판 메시지 올 때마다 현재 시각 기록 (CompressedImage만 기록)
+    # def cb_level_sign(self, msg):
+    #     self.level_sign_detect_times.append(time.time())
+        
+    def cb_level_bar(self, msg):
+        self.level_bar_detect_times.append(time.time())
+
+    # sliding window 내 감지 횟수 반환
+    def get_recent_detect_count(self, detect_times):
+        now = time.time()
+        return len([t for t in detect_times if now-t < self.check_window_sec])
+
+    # 기존 find_traffic_light()에서 detect_red 등 검사하는 부분에 조건 추가!
     def find_traffic_light(self):
         cv_image_mask_red = self.mask_red_traffic_light()
         cv_image_mask_red = cv2.GaussianBlur(cv_image_mask_red, (5, 5), 0)
         detect_red = self.find_circle_of_traffic_light(cv_image_mask_red, 'red')
-        if detect_red:
-            cv2.putText(self.cv_image, 'RED', (self.point_x, self.point_y),
-                        cv2.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 255))
 
         cv_image_mask_yellow = self.mask_yellow_traffic_light()
         cv_image_mask_yellow = cv2.GaussianBlur(cv_image_mask_yellow, (5, 5), 0)
         detect_yellow = self.find_circle_of_traffic_light(cv_image_mask_yellow, 'yellow')
-        if detect_yellow:
-            cv2.putText(self.cv_image, 'YELLOW', (self.point_x, self.point_y),
-                        cv2.FONT_HERSHEY_DUPLEX, 0.5, (0, 255, 255))
 
         cv_image_mask_green = self.mask_green_traffic_light()
         cv_image_mask_green = cv2.GaussianBlur(cv_image_mask_green, (5, 5), 0)
         detect_green = self.find_circle_of_traffic_light(cv_image_mask_green, 'green')
-        if detect_green:
+
+        # *** 표지판 감지 검사 조건 추가 ***
+        sign_cnt = self.get_recent_detect_count(self.traffic_sign_detect_times)
+        # level_cnt = self.get_recent_detect_count(self.level_sign_detect_times)
+        level_cnt = self.get_recent_detect_count(self.level_bar_detect_times)
+        ignore_sign = (level_cnt >= self.check_min_count) or (sign_cnt >= self.check_min_count)
+
+        if detect_red and not ignore_sign:
+            cv2.putText(self.cv_image, 'RED', (self.point_x, self.point_y),
+                        cv2.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 255))
+            self.get_logger().info("Red light: 신호등으로 최종 인정")
+        elif detect_red and ignore_sign:
+            self.get_logger().info("Red light: 표지판/차단봉 감지로 신호 무시")
+
+        if detect_yellow and not ignore_sign:
+            cv2.putText(self.cv_image, 'YELLOW', (self.point_x, self.point_y),
+                        cv2.FONT_HERSHEY_DUPLEX, 0.5, (0, 255, 255))
+            self.get_logger().info("Yellow light: 신호등으로 최종 인정")
+        elif detect_yellow and ignore_sign:
+            self.get_logger().info("Yellow light: 표지판/차단봉 감지로 신호 무시")
+
+        if detect_green and not ignore_sign:
             cv2.putText(self.cv_image, 'GREEN', (self.point_x, self.point_y),
                         cv2.FONT_HERSHEY_DUPLEX, 0.5, (0, 255, 0))
+            self.get_logger().info("Green light: 신호등으로 최종 인정")
+        elif detect_green and ignore_sign:
+            self.get_logger().info("Green light: 표지판/차단봉 감지로 신호 무시")
 
         if self.pub_image_type == 'compressed':
             self.pub_image_traffic_light.publish(
