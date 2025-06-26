@@ -22,13 +22,13 @@ class StableWaypointFollower(Node):
         # 안정화 파라미터
         self.WAYPOINT_DIST_THRESHOLD = 0.03  # 3cm
         self.WAYPOINT_ANGLE_THRESHOLD = 0.1  # 약 5.7도
-        self.MAX_WAYPOINTS = 1000  # 메모리 매니징
+        self.MAX_WAYPOINTS = 1000  # 메모리 관리
         
-        # 속도 제한
-        self.MAX_LIN = 0.08  # 8cm/s
-        self.MAX_ANG = 0.15  
+        # 속도 제한 ↓
+        self.MAX_LIN = 0.08  # 8cm/s (기존 18cm/s)
+        self.MAX_ANG = 0.15  # 0.15 rad/s (기존 0.25)
         
-        # 게인
+        # 게인 ↓
         self.LIN_GAIN = 0.3  
         self.ANG_GAIN = 0.15  
         
@@ -162,4 +162,3 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
-

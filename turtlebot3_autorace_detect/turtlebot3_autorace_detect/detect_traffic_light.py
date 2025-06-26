@@ -30,7 +30,11 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import CompressedImage
 from sensor_msgs.msg import Image
-from std_msgs.msg import Int8
+from std_msgs.msg import UInt8
+from std_msgs.msg import Bool
+# from geometry_msgs.msg import Twist  # Twist 메시지 제거
+from std_msgs.msg import Int8  # Int8 메시지 추가
+
 
 class DetectTrafficLight(Node):
 
@@ -177,6 +181,28 @@ class DetectTrafficLight(Node):
         self.red_count = 0
         self.stop_count = 0
         self.off_traffic = False
+
+        # 1. 표지판(차단봉/교차로 등) 최근 감지시각 저장용 deque
+        self.traffic_sign_detect_times = collections.deque(maxlen=10)
+        # self.level_sign_detect_times = collections.deque(maxlen=10)
+        self.level_bar_detect_times = collections.deque(maxlen=10)
+        self.check_window_sec = 1.5        # 1.5초 윈도우 내에서 N회 감지되면 신호 무시
+        self.check_min_count = 2           # 표지판 감지 N회 이상이면 무시
+
+        # 2. 표지판 토픽 구독 (이미지 → UInt8로 변경)
+        self.create_subscription(
+            UInt8, '/detect/traffic_sign', self.cb_traffic_sign, 1)
+        # self.create_subscription(
+        #     CompressedImage, '/detect/image_level/compressed', self.cb_level_sign, 1)
+        self.create_subscription(Bool, '/detect/level_bar', self.cb_level_bar, 1)
+        # 차량 속도 제어 퍼블리셔 제거
+        # self.cmd_vel_publisher = self.create_publisher(Twist, '/cmd_vel', 10) # 제거
+        # self.current_speed = 0.0 # 제거
+
+        # 신호등 상태 퍼블리셔 추가
+        self.traffic_light_state_publisher = self.create_publisher(
+            Int8, '/traffic_light_state', 10)
+
 
         time.sleep(1)
         self.timer = self.create_timer(0.1, self.timer_callback)
