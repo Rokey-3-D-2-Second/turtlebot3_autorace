@@ -30,7 +30,7 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import CompressedImage
 from sensor_msgs.msg import Image
-
+from std_msgs.msg import Int8
 
 class DetectTrafficLight(Node):
 
@@ -284,9 +284,15 @@ class DetectTrafficLight(Node):
         cv_image_mask_red = self.mask_red_traffic_light()
         cv_image_mask_red = cv2.GaussianBlur(cv_image_mask_red, (5, 5), 0)
         detect_red = self.find_circle_of_traffic_light(cv_image_mask_red, 'red')
+        # if detect_red:
+        #     cv2.putText(self.cv_image, 'RED', (self.point_x, self.point_y),
+        #                 cv2.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 255))
+        
+        red_light_detected = False # 빨간불 감지 여부 플래그
         if detect_red:
             cv2.putText(self.cv_image, 'RED', (self.point_x, self.point_y),
                         cv2.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 255))
+            red_light_detected = True # 빨간불 감지됨
 
         cv_image_mask_yellow = self.mask_yellow_traffic_light()
         cv_image_mask_yellow = cv2.GaussianBlur(cv_image_mask_yellow, (5, 5), 0)
