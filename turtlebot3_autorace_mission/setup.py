@@ -39,6 +39,7 @@ setup(
             'avoid_construction = turtlebot3_autorace_mission.avoid_construction:main',
             'control_lane = turtlebot3_autorace_mission.control_lane:main',
             'mission_tunnel = turtlebot3_autorace_mission.mission_tunnel:main',
+            'tb3_follower = turtlebot3_autorace_mission.tb3_follower:main',
         ],
     },
 )
