@@ -40,11 +40,7 @@ setup(
             'control_lane = turtlebot3_autorace_mission.control_lane:main',
             #'control_lane2 = turtlebot3_autorace_mission.control_lane2:main',
             'mission_tunnel = turtlebot3_autorace_mission.mission_tunnel:main',
-<<<<<<< HEAD
-            'tb3_follower = turtlebot3_autorace_mission.tb3_follower:main',
-=======
             'tb3_follower = turtlebot3_autorace_mission.tb3_follower:main'
->>>>>>> e99e6f9a159a5afb09b204e81d1e68d984c3c480
         ],
     },
 )
