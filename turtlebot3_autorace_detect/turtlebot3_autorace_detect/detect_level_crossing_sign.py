@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+
+# 이 코드는 ROS2 노드에서 STOP 교통 표지판을 인식하고, 인식되었을 때 토픽을 통해 알리는 기능을 수행함.
 #
 # Copyright 2018 ROBOTIS CO., LTD.
 #
@@ -19,8 +21,8 @@
 from enum import Enum
 import os
 
-import cv2
-from cv_bridge import CvBridge
+import cv2  # OpenCV 사용
+from cv_bridge import CvBridge  # ROS 이미지 메시지를 OpenCV 이미지로 변환
 import numpy as np
 import rclpy
 from rclpy.node import Node
@@ -46,6 +48,7 @@ class DetectSign(Node):
         self.sub_image_type = 'raw'
         self.pub_image_type = 'compressed'
 
+        # 이미지 입력 구독자 설정
         if self.sub_image_type == 'compressed':
             self.sub_image_original = self.create_subscription(
                 CompressedImage,
@@ -78,11 +81,14 @@ class DetectSign(Node):
                 Image, '/detect/image_output', 10
             )
 
-        self.cvBridge = CvBridge()
-        self.TrafficSign = Enum('TrafficSign', 'stop')
-        self.counter = 1
+        self.cvBridge = CvBridge()  # ROS 이미지 ↔ OpenCV 변환용 브릿지
 
-        self.fnPreproc()
+        # 표지판 종류 정의 (지금은 stop 하나만 사용)
+        self.TrafficSign = Enum('TrafficSign', 'stop')
+
+        self.counter = 1  # 프레임 수 카운터 (프레임 드랍용)
+
+        self.fnPreproc()  # SIFT 및 학습 이미지 전처리
 
         self.get_logger().info('DetectSign Node Initialized')
 
@@ -92,6 +98,7 @@ class DetectSign(Node):
         """
         self.sift = cv2.SIFT_create()
 
+        # 이미지 경로 설정 및 stop 표지판 이미지 불러오기
         dir_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
         dir_path = os.path.join(dir_path, 'image')
 
@@ -99,6 +106,7 @@ class DetectSign(Node):
         
         self.kp_stop, self.des_stop = self.sift.detectAndCompute(self.img_stop, None)
 
+        # FLANN 매칭 설정
         FLANN_INDEX_KDTREE = 0
         index_params = {
             'algorithm': FLANN_INDEX_KDTREE,
@@ -133,6 +141,7 @@ class DetectSign(Node):
         else:
             self.counter = 1
 
+        # 메시지를 OpenCV 이미지로 변환
         if self.sub_image_type == 'compressed':
             np_arr = np.frombuffer(image_msg.data, np.uint8)
             cv_image_input = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
@@ -161,7 +170,7 @@ class DetectSign(Node):
         level_crossing_msg = Int8()
         level_crossing_msg.data = 5  # 3: 신호 없음/기본 주행
 
-        image_out_num = 1
+        image_out_num = 1  # 기본 출력 이미지 설정 (인식 못함)
 
         # des1이 None이 아닌 경우에만 매칭을 시도
         if des1 is not None and len(des1) > 0:
@@ -205,21 +214,21 @@ class DetectSign(Node):
         self.level_crossing_state_publisher.publish(level_crossing_msg)
 
 
+        image_out_num = 2  # 매칭 시각화 이미지 출력
+
+        # 이미지 퍼블리시 (인식 여부에 따라 다르게)
         if image_out_num == 1:
             if self.pub_image_type == 'compressed':
                 self.pub_image_traffic_sign.publish(
-                    self.cvBridge.cv2_to_compressed_imgmsg(
-                        cv_image_input, 'jpg'
-                    )
+                    self.cvBridge.cv2_to_compressed_imgmsg(cv_image_input, 'jpg')
                 )
-
             elif self.pub_image_type == 'raw':
                 self.pub_image_traffic_sign.publish(
-                    self.cvBridge.cv2_to_imgmsg(
-                        cv_image_input, 'bgr8'
-                    )
+                    self.cvBridge.cv2_to_imgmsg(cv_image_input, 'bgr8')
                 )
+
         elif image_out_num == 2:
+            # 매칭 시각화
             draw_params2 = {
                 'matchColor': (0, 0, 255),
                 'singlePointColor': None,
@@ -250,15 +259,11 @@ class DetectSign(Node):
 
             if self.pub_image_type == 'compressed':
                 self.pub_image_traffic_sign.publish(
-                    self.cvBridge.cv2_to_compressed_imgmsg(
-                        final_stop, 'jpg'
-                    )
+                    self.cvBridge.cv2_to_compressed_imgmsg(final_stop, 'jpg')
                 )
             elif self.pub_image_type == 'raw':
                 self.pub_image_traffic_sign.publish(
-                    self.cvBridge.cv2_to_imgmsg(
-                        final_stop, 'bgr8'
-                    )
+                    self.cvBridge.cv2_to_imgmsg(final_stop, 'bgr8')
                 )
 
 
@@ -273,5 +278,6 @@ def main(args=None):
     rclpy.shutdown()
 
 
+# 이 노드 파일이 직접 실행되었을 때 main() 실행
 if __name__ == '__main__':
     main()

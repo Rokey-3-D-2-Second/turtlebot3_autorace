@@ -27,8 +27,15 @@ def generate_launch_description():
             name='control_lane',
             output='screen',
             remappings=[
-                ('/control/lane', '/detect/lane'),
-                ('/control/cmd_vel', '/cmd_vel')
+                ('/control/lane', '/detect/lane'),          # 차선 감지 토픽 (기존)
+                ('/control/cmd_vel', '/cmd_vel'),           # 속도 명령 발행 토픽 (기존)
+
+                # --- 추가된 remappings ---
+                ('/odom', '/odom'),                         # 오도메트리 토픽
+                ('/traffic_light_state', '/traffic_light_state'), # 신호등 상태 토픽
+                ('/level_crossing_state', '/level_crossing_state'), # 건널목 상태 토픽
+                ('/stop_sign_state', '/stop_sign_state')    # 정지 표지판 상태 토픽
+                # --- remappings 추가 끝 ---
             ]
         )
     return LaunchDescription([

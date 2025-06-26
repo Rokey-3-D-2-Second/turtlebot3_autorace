@@ -37,6 +37,8 @@ from std_msgs.msg import UInt8  # 8비트 부호 없는 정수 메시지 타입 
 from std_msgs.msg import Int8
 from std_msgs.msg import Bool
 
+
+# 점과 직선 사이의 거리 계산 함수
 def fnCalcDistanceDot2Line(a, b, c, x0, y0):
     """
     점 (x0, y0)와 직선 Ax + By + C = 0 사이의 거리를 계산합니다.
@@ -45,6 +47,7 @@ def fnCalcDistanceDot2Line(a, b, c, x0, y0):
     return distance  # 계산된 거리 반환
 
 
+# 두 점 사이의 거리 계산 함수
 def fnCalcDistanceDot2Dot(x1, y1, x2, y2):
     """
     두 점 (x1, y1)와 (x2, y2) 사이의 유클리드 거리를 계산합니다.
@@ -53,6 +56,7 @@ def fnCalcDistanceDot2Dot(x1, y1, x2, y2):
     return distance  # 계산된 거리 반환
 
 
+# 점 배열을 내림차순으로 정렬하고 정렬된 인덱스 반환
 def fnArrangeIndexOfPoint(arr):
     """
     배열의 값을 기준으로 인덱스를 내림차순으로 정렬합니다.
@@ -68,6 +72,7 @@ def fnArrangeIndexOfPoint(arr):
     return arr_idx  # 정렬된 인덱스 리스트 반환
 
 
+# 세 점이 거의 일직선상에 있는지 확인하는 함수 (오차 범위 내)
 def fnCheckLinearity(point1, point2, point3):
     """
     세 점이 거의 일직선상에 있는지 확인합니다.
@@ -86,6 +91,7 @@ def fnCheckLinearity(point1, point2, point3):
     return err < threshold_linearity  # 거리가 임계값보다 작으면 True (선형) 반환
 
 
+# 두 거리의 표준편차가 임계값 이하인지 확인하여 거리들이 거의 같은지 판단하는 함수
 def fnCheckDistanceIsEqual(point1, point2, point3):
     """
     연속된 두 점 쌍 사이의 거리가 거의 동일한지 확인합니다.
@@ -98,9 +104,9 @@ def fnCheckDistanceIsEqual(point1, point2, point3):
     return std < threshold_distance_equality  # 표준 편차가 임계값보다 작으면 True (거의 동일) 반환
 
 
-# ------------------------
-# ROS2 Node: DetectLevelNode
-# ------------------------
+# -----------------------------------
+# ROS2 노드 클래스: DetectLevelNode
+# -----------------------------------
 class DetectLevelNode(Node):
     """
     ROS 2 노드: 건널목(Level Crossing)을 감지하고 상태를 발행합니다.
@@ -211,6 +217,7 @@ class DetectLevelNode(Node):
 
         time.sleep(1.0)  # 초기화 후 1초 대기
 
+    # 파라미터 변경 시 호출되는 콜백 함수
     def on_parameter_change(self, params):
         """
         파라미터가 변경될 때 호출되는 콜백 함수입니다.
@@ -232,12 +239,8 @@ class DetectLevelNode(Node):
         return SetParametersResult(successful=True)  # 파라미터 설정 성공 결과 반환
 
     def timer_callback(self):
-        """
-        주기적으로 호출되는 타이머 콜백 함수입니다.
-        새로운 이미지가 있을 경우 건널목 감지 함수를 호출합니다.
-        """
-        if self.cv_image is not None:  # OpenCV 이미지가 유효한 경우
-            self.find_level()  # 건널목 감지 함수 호출
+        if self.cv_image is not None:
+            self.find_level()
 
     def get_image(self, image_msg):
         """
@@ -259,6 +262,7 @@ class DetectLevelNode(Node):
             except Exception as e:
                 self.get_logger().error('CV Bridge error: %s' % str(e))  # 변환 오류 발생 시 에러 로그 출력
 
+    # 레벨 크로싱 동작 명령 처리 함수
     def level_crossing_order(self, order_msg):
         """
         건널목 통과 명령 메시지를 수신하는 콜백 함수입니다.
@@ -301,8 +305,8 @@ class DetectLevelNode(Node):
             self.pub_level_crossing_state_publisher.publish(pub_level_crossing_msg)
             pub_level_crossing_return.data = self.StepOfLevelCrossing.exit.value  # 'exit' 단계로 반환 메시지 설정
 
-        self.get_logger().info(str(pub_level_crossing_return.data))  # 반환 메시지 데이터 로그 출력
-        time.sleep(3.0)  # 3초 대기
+        self.get_logger().info(pub_level_crossing_return.data)
+        time.sleep(3.0)
 
     def find_level(self):
         """
@@ -355,6 +359,7 @@ class DetectLevelNode(Node):
         mask = cv2.bitwise_not(mask)  # 마스크를 반전 (노란색이 아닌 영역을 흰색으로)
         return mask  # 반전된 마스크 반환
 
+    # 필터링된 이미지에서 레벨 크로싱 관련 도형 검출 및 상태 판단
     def find_rect_of_level(self, mask):
         # --- 결과 플래그 초기화 ---
         is_level_detected = False     # 바(bar)가 감지됨
@@ -428,7 +433,7 @@ class DetectLevelNode(Node):
             # 무게중심도 표시(시각화용)
             frame = cv2.circle(frame, (int(mean_x), int(mean_y)), 5, (255, 255, 0), -1)
 
-            # 각 bar의 좌표를 추출
+            # 선형성 및 거리 등 검사에 필요한 3개 점 좌표 설정
             point1 = [int(keypts[idx_order[0]].pt[0]), int(keypts[idx_order[0]].pt[1] - 1)]
             point2 = [int(keypts[idx_order[2]].pt[0]), int(keypts[idx_order[2]].pt[1] - 1)] # 가장 가까운 점
             point3 = [int(keypts[idx_order[1]].pt[0]), int(keypts[idx_order[1]].pt[1] - 1)]
@@ -452,7 +457,7 @@ class DetectLevelNode(Node):
             # --- 상태 판별 로직 ---
             # (1) 세 bar가 수직(혹은 기울기가 매우 큰 경우)면 "열림(open)"
             if dx == 0 or abs(slope) > 2.0:
-                is_level_opened = True
+                is_level_opened = True  # 레벨 크로싱이 열려있음
                 self.stop_bar_state = 'go'
                 self.get_logger().info(self.stop_bar_state)
             else:
@@ -473,7 +478,7 @@ class DetectLevelNode(Node):
                         msg_state.data = 2 # 'slowdown' 상태를 나타내는 값
                         self.pub_level_crossing_state.publish(msg_state) # 발행 추가
                     else:
-                        is_level_close = True
+                        is_level_close = True  # 레벨에 가까움 (정지 신호)
                         self.stop_bar_state = 'stop'
                         self.get_logger().info(self.stop_bar_state)
                         msg_state.data = 4 # 'stop' 상태 (control_lane에서 정지시키는 값)

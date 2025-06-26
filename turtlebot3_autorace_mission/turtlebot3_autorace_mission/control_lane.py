@@ -104,7 +104,7 @@ class ControlLane(Node):
         self.Ki_linear = 0.01 # 적분 이득
         self.Kd_linear = 0.05 # 미분 이득
 
-        self.target_linear_velocity = 0.02  # 목표 선형 속도 (m/s), 초기값
+        self.target_linear_velocity = 0.22  # 목표 선형 속도 (m/s), 초기값
         self.current_linear_velocity = 0.0 # 현재 선형 속도 (오도메트리에서 수신)
         self.linear_error = 0.0
         self.last_linear_error = 0.0
@@ -125,15 +125,9 @@ class ControlLane(Node):
 
 
     def odom_callback(self, msg):
-        """
-        오도메트리 메시지에서 현재 선형 속도를 추출합니다.
-        """
         self.current_linear_velocity = msg.twist.twist.linear.x
 
     def traffic_light_state_callback(self, msg):
-        """
-        신호등 상태 메시지를 수신하면 호출되는 콜백 함수.
-        """
         self.current_traffic_light_state = msg.data
         self.get_logger().info(f'Received traffic light state: {self.current_traffic_light_state}')
 
@@ -191,71 +185,60 @@ class ControlLane(Node):
             return
 
         twist = Twist()
-        effective_target_linear_vel = self.target_linear_velocity # 기본 목표 속도 설정
+        effective_target_linear_vel = self.target_linear_velocity
 
-        # 1. 신호등 및 건널목 상태에 따른 선형 속도 결정
-        # 우선순위: 건널목 정지 > 신호등 빨간불 > 기타
-        if self.current_level_crossing_state == 4: # 건널목 정지 (예시 값: 4)
+        # 정지 표지판 상태 우선 체크
+        if self.current_stop_sign_state == 1:
+            effective_target_linear_vel = 0.0
+            self.get_logger().info('Stop sign detected. Forcing linear speed to 0.')
+            self.linear_integral = 0.0
+            self.last_linear_error = 0.0
+
+        # 신호등 및 건널목 상태에 따른 선형 속도 결정
+        elif self.current_level_crossing_state == 4:
             effective_target_linear_vel = 0.0
             self.get_logger().info('Level crossing STOP detected. Forcing linear speed to 0.')
-            # 정지 시 PID 적분 항 초기화 (정지 후 재출발 시 오버슈트 방지)
             self.linear_integral = 0.0
             self.last_linear_error = 0.0
-        elif self.current_level_crossing_state == 1: # 건널목 (GO)
-            effective_target_linear_vel = self.MAX_ROBOT_LINEAR_X # 또는 self.target_linear_velocity 사용
-            self.get_logger().info('Green light detected. Default speed or MAX_ROBOT_LINEAR_X.')
-        elif self.current_stop_sign_state == 1: # 빨간 표지판 (STOP)
-            effective_target_linear_vel = 0.0
-            self.get_logger().info('Red sign detected. Forcing linear speed to 0.')
-            self.linear_integral = 0.0
-            self.last_linear_error = 0.0
-        elif self.current_traffic_light_state == 0: # 빨간불 (STOP)
+        elif self.current_traffic_light_state == 0:
             effective_target_linear_vel = 0.0
             self.get_logger().info('Red light detected. Forcing linear speed to 0.')
-            # 빨간불 시 PID 적분 항 초기화
             self.linear_integral = 0.0
             self.last_linear_error = 0.0
-        elif self.current_traffic_light_state == 1: # 녹색불 (GO)
-            effective_target_linear_vel = self.MAX_ROBOT_LINEAR_X # 또는 self.target_linear_velocity 사용
+        elif self.current_traffic_light_state == 1:
+            effective_target_linear_vel = self.MAX_ROBOT_LINEAR_X
             self.get_logger().info('Green light detected. Default speed or MAX_ROBOT_LINEAR_X.')
-        elif self.current_traffic_light_state == 2: # 노란불 (CAUTION)
-            effective_target_linear_vel = self.MAX_ROBOT_LINEAR_X # 또는 self.target_linear_velocity 사용 (감속 필요시 조절)
+        elif self.current_traffic_light_state == 2:
+            effective_target_linear_vel = self.MAX_ROBOT_LINEAR_X
             self.get_logger().info('Yellow light detected. Default speed or MAX_ROBOT_LINEAR_X.')
-        else: # self.current_traffic_light_state == 3: 신호 없음 (DEFAULT)
-            effective_target_linear_vel = self.MAX_ROBOT_LINEAR_X # 또는 self.target_linear_velocity 사용
+        else:
+            effective_target_linear_vel = self.MAX_ROBOT_LINEAR_X
             self.get_logger().info('No traffic light/crossing state. Default driving speed.')
 
-        # 최종 선형 속도 계산 (PID)
         pid_linear_output = self.calculate_linear_pid(effective_target_linear_vel)
         twist.linear.x = max(min(pid_linear_output, self.MAX_ROBOT_LINEAR_X), self.MIN_ROBOT_LINEAR_X)
 
-        # 2. 각속도 (Angular Velocity) 제어 (기존 로직 유지)
         center = desired_center.data
         error = center - 500
 
-        Kp_angular = 0.01
-        Kd_angular = 0.015
+        Kp_angular = 0.005
+        Kd_angular = 0.007
 
         angular_z = Kp_angular * error + Kd_angular * (error - self.last_error)
-        self.last_error = error # last_error는 이제 각속도 오차에 대한 것입니다.
+        self.last_error = error
         
-        # 3. Twist 메시지 발행
         twist.angular.z = -max(angular_z, -self.MAX_ANGULAR_Z) if angular_z < 0 else -min(angular_z, self.MAX_ANGULAR_Z)
 
         self.pub_cmd_vel.publish(twist)
 
-        # 디버깅 정보 출력
         self.get_logger().info(
-            f"TL_State: {self.current_traffic_light_state}, "
+            f"StopSign: {self.current_stop_sign_state}, TL_State: {self.current_traffic_light_state}, "
             f"LC_State: {self.current_level_crossing_state}, "
-            f"LC_State: {self.current_stop_sign_state}, "
             f"Cmd Linear X: {twist.linear.x:.3f}, Cmd Angular Z: {twist.angular.z:.3f}"
         )
 
-
     def callback_avoid_cmd(self, twist_msg):
         self.avoid_twist = twist_msg
-
         if self.avoid_active:
             # 회피 모드에서는 직접 회피 명령을 발행
             self.pub_cmd_vel.publish(self.avoid_twist)

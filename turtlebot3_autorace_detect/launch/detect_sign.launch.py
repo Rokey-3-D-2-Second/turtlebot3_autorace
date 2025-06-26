@@ -26,7 +26,7 @@ def generate_launch_description():
     mission_arg = DeclareLaunchArgument(
         'mission',
         default_value='intersection',
-        description='Mission type [intersection, construction, parking, level_crossing, tunnel]'
+        description='Mission type [intersection, construction, parking, level_crossing, tunnel, stop]'
     )
 
     mission = LaunchConfiguration('mission')
