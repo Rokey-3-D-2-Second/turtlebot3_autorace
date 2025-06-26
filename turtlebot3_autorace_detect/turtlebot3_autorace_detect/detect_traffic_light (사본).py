@@ -16,7 +16,6 @@
 #
 # Author: Leon Jung, Gilbert, Ashe Kim, ChanHyeong Lee
 
-import collections
 import time
 
 import cv2
@@ -241,7 +240,7 @@ class DetectTrafficLight(Node):
 
     def get_image(self, image_msg):
         # Processing every 3 frames to reduce frame processing load
-        if self.counter % 1 != 0:
+        if self.counter % 3 != 0:
             self.counter += 1
             return
         else:
@@ -263,23 +262,6 @@ class DetectTrafficLight(Node):
         if self.is_image_available:
             self.find_traffic_light()
 
-    # 표지판 메시지 올 때마다 현재 시각 기록 (UInt8만 기록)
-    def cb_traffic_sign(self, msg):
-        self.traffic_sign_detect_times.append(time.time())
-
-    # 표지판 메시지 올 때마다 현재 시각 기록 (CompressedImage만 기록)
-    # def cb_level_sign(self, msg):
-    #     self.level_sign_detect_times.append(time.time())
-        
-    def cb_level_bar(self, msg):
-        self.level_bar_detect_times.append(time.time())
-
-    # sliding window 내 감지 횟수 반환
-    def get_recent_detect_count(self, detect_times):
-        now = time.time()
-        return len([t for t in detect_times if now-t < self.check_window_sec])
-
-    # 기존 find_traffic_light()에서 detect_red 등 검사하는 부분에 조건 추가!
     def find_traffic_light(self):
         cv_image_mask_red = self.mask_red_traffic_light()
         cv_image_mask_red = cv2.GaussianBlur(cv_image_mask_red, (5, 5), 0)
@@ -291,64 +273,16 @@ class DetectTrafficLight(Node):
         cv_image_mask_yellow = self.mask_yellow_traffic_light()
         cv_image_mask_yellow = cv2.GaussianBlur(cv_image_mask_yellow, (5, 5), 0)
         detect_yellow = self.find_circle_of_traffic_light(cv_image_mask_yellow, 'yellow')
+        if detect_yellow:
+            cv2.putText(self.cv_image, 'YELLOW', (self.point_x, self.point_y),
+                        cv2.FONT_HERSHEY_DUPLEX, 0.5, (0, 255, 255))
 
         cv_image_mask_green = self.mask_green_traffic_light()
         cv_image_mask_green = cv2.GaussianBlur(cv_image_mask_green, (5, 5), 0)
         detect_green = self.find_circle_of_traffic_light(cv_image_mask_green, 'green')
-
-        # *** 표지판 감지 검사 조건 추가 ***
-        sign_cnt = self.get_recent_detect_count(self.traffic_sign_detect_times)
-        # level_cnt = self.get_recent_detect_count(self.level_sign_detect_times)
-        level_cnt = self.get_recent_detect_count(self.level_bar_detect_times)
-        ignore_sign = (level_cnt >= self.check_min_count) or (sign_cnt >= self.check_min_count)
-
-        if detect_red and not ignore_sign:
-            cv2.putText(self.cv_image, 'RED', (self.point_x, self.point_y),
-                        cv2.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 255))
-            self.get_logger().info("Red light: 신호등으로 최종 인정")
-        elif detect_red and ignore_sign:
-            self.get_logger().info("Red light: 표지판/차단봉 감지로 신호 무시")
-
-        if detect_yellow and not ignore_sign:
-            cv2.putText(self.cv_image, 'YELLOW', (self.point_x, self.point_y),
-                        cv2.FONT_HERSHEY_DUPLEX, 0.5, (0, 255, 255))
-            self.get_logger().info("Yellow light: 신호등으로 최종 인정")
-        elif detect_yellow and ignore_sign:
-            self.get_logger().info("Yellow light: 표지판/차단봉 감지로 신호 무시")
-
-        if detect_green and not ignore_sign:
+        if detect_green:
             cv2.putText(self.cv_image, 'GREEN', (self.point_x, self.point_y),
                         cv2.FONT_HERSHEY_DUPLEX, 0.5, (0, 255, 0))
-            self.get_logger().info("Green light: 신호등으로 최종 인정")
-        elif detect_green and ignore_sign:
-            self.get_logger().info("Green light: 표지판/차단봉 감지로 신호 무시")
-
-        # 신호등 상태 메시지 생성 및 발행
-        traffic_light_msg = Int8()
-        if red_light_detected:
-            traffic_light_msg.data = 0  # 빨간불 (정지)
-            self.get_logger().info('Red light detected. Publishing state: 0 (STOP)')
-        elif detect_green:
-            traffic_light_msg.data = 1  # 녹색불 (주행)
-            self.get_logger().info('Green light detected. Publishing state: 1 (GO)')
-        elif detect_yellow:
-            traffic_light_msg.data = 2  # 노란불 (대기/주의)
-            self.get_logger().info('Yellow light detected. Publishing state: 2 (CAUTION)')
-        else:
-            traffic_light_msg.data = 3  # 신호 없음 (기본 주행)
-            self.get_logger().info('No specific traffic light detected. Publishing state: 3 (DEFAULT)')
-
-        self.traffic_light_state_publisher.publish(traffic_light_msg)
-
-        # 기존 빨간불 감지에 따른 차량 속도 제어 로직 제거
-        # if red_light_detected:
-        #     if self.current_speed != 0.0:
-        #         self.stop_car()
-        # else:
-        #     if detect_green and self.current_speed == 0.0:
-        #          self.move_car_forward(0.1)
-        #     elif not detect_green and not detect_yellow and not detect_red and self.current_speed == 0.0:
-        #          self.move_car_forward(0.0)
 
         if self.pub_image_type == 'compressed':
             self.pub_image_traffic_light.publish(
@@ -356,26 +290,6 @@ class DetectTrafficLight(Node):
         else:
             self.pub_image_traffic_light.publish(
                 self.cvBridge.cv2_to_imgmsg(self.cv_image, 'bgr8'))
-
-    # stop_car() 및 move_car_forward() 함수 제거
-    # def stop_car(self):
-    #     """차량을 정지시키는 함수."""
-    #     self.get_logger().info('빨간불 감지! 자동차를 정지합니다.')
-    #     twist_msg = Twist()
-    #     twist_msg.linear.x = 0.0
-    #     twist_msg.angular.z = 0.0
-    #     self.cmd_vel_publisher.publish(twist_msg)
-    #     self.current_speed = 0.0
-
-    # def move_car_forward(self, speed):
-    #     """지정된 속도로 차량을 전진시키는 함수."""
-    #     self.get_logger().info(f'녹색불 감지 또는 기본 이동: 차량을 {speed} m/s로 움직입니다.')
-    #     twist_msg = Twist()
-    #     twist_msg.linear.x = float(speed)
-    #     twist_msg.angular.z = 0.0
-    #     self.cmd_vel_publisher.publish(twist_msg)
-    #     self.current_speed = speed
-
 
     def mask_red_traffic_light(self):
         image = np.copy(self.cv_image)
