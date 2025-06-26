@@ -33,8 +33,8 @@ from rclpy.node import Node  # ROS 2 노드 클래스 임포트
 from sensor_msgs.msg import CompressedImage  # 압축된 이미지 메시지 타입 임포트
 from sensor_msgs.msg import Image  # 일반 이미지 메시지 타입 임포트
 from std_msgs.msg import Float64  # 64비트 부동 소수점 메시지 타입 임포트
-#from std_msgs.msg import Int8  # 8비트 부호 없는 정수 메시지 타입 임포트
-from std_msgs.msg import Int8
+from std_msgs.msg import UInt8  # 8비트 부호 없는 정수 메시지 타입 임포트
+
 
 def fnCalcDistanceDot2Line(a, b, c, x0, y0):
     """
@@ -144,22 +144,22 @@ class DetectLevelNode(Node):
         )
 
         # 파라미터 선언 및 기본값 설정
-        self.declare_parameter('detect.level.yellow.hue_l', 20, descriptor=hue_l_descriptor)  # 노란색 하위 Hue 임계값
-        self.declare_parameter('detect.level.yellow.hue_h', 40, descriptor=hue_h_descriptor)  # 노란색 상위 Hue 임계값
-        self.declare_parameter('detect.level.yellow.saturation_l', 100, descriptor=sat_l_descriptor)  # 노란색 하위 Saturation 임계값
-        self.declare_parameter('detect.level.yellow.saturation_h', 255, descriptor=sat_h_descriptor)  # 노란색 상위 Saturation 임계값
-        self.declare_parameter('detect.level.yellow.lightness_l', 100, descriptor=light_l_descriptor)  # 노란색 하위 Lightness 임계값
-        self.declare_parameter('detect.level.yellow.lightness_h', 255, descriptor=light_h_descriptor)  # 노란색 상위 Lightness 임계값
+        self.declare_parameter('detect.level.red.hue_l', 0, descriptor=hue_l_descriptor)  # 빨간색 하위 Hue 임계값
+        self.declare_parameter('detect.level.red.hue_h', 179, descriptor=hue_h_descriptor)  # 빨간색 상위 Hue 임계값
+        self.declare_parameter('detect.level.red.saturation_l', 24, descriptor=sat_l_descriptor)  # 빨간색 하위 Saturation 임계값
+        self.declare_parameter('detect.level.red.saturation_h', 255, descriptor=sat_h_descriptor)  # 빨간색 상위 Saturation 임계값
+        self.declare_parameter('detect.level.red.lightness_l', 207, descriptor=light_l_descriptor)  # 빨간색 하위 Lightness 임계값
+        self.declare_parameter('detect.level.red.lightness_h', 162, descriptor=light_h_descriptor)  # 빨간색 상위 Lightness 임계값
 
         self.declare_parameter('is_detection_calibration_mode', False)  # 캘리브레이션 모드 여부 파라미터
 
         # 파라미터 값 가져오기
-        self.hue_yellow_l = self.get_parameter('detect.level.yellow.hue_l').value  # 노란색 하위 Hue 값
-        self.hue_yellow_h = self.get_parameter('detect.level.yellow.hue_h').value  # 노란색 상위 Hue 값
-        self.saturation_yellow_l = self.get_parameter('detect.level.yellow.saturation_l').value  # 노란색 하위 Saturation 값
-        self.saturation_yellow_h = self.get_parameter('detect.level.yellow.saturation_h').value  # 노란색 상위 Saturation 값
-        self.lightness_yellow_l = self.get_parameter('detect.level.yellow.lightness_l').value  # 노란색 하위 Lightness 값
-        self.lightness_yellow_h = self.get_parameter('detect.level.yellow.lightness_h').value  # 노란색 상위 Lightness 값
+        self.hue_red_l = self.get_parameter('detect.level.red.hue_l').value  # 빨간색 하위 Hue 값
+        self.hue_red_h = self.get_parameter('detect.level.red.hue_h').value  # 빨간색 상위 Hue 값
+        self.saturation_red_l = self.get_parameter('detect.level.red.saturation_l').value  # 빨간색 하위 Saturation 값
+        self.saturation_red_h = self.get_parameter('detect.level.red.saturation_h').value  # 빨간색 상위 Saturation 값
+        self.lightness_red_l = self.get_parameter('detect.level.red.lightness_l').value  # 빨간색 하위 Lightness 값
+        self.lightness_red_h = self.get_parameter('detect.level.red.lightness_h').value  # 빨간색 상위 Lightness 값
         self.is_calibration_mode = self.get_parameter('is_detection_calibration_mode').value  # 캘리브레이션 모드 여부
 
         self.add_on_set_parameters_callback(self.on_parameter_change)  # 파라미터 변경 콜백 함수 등록
@@ -175,10 +175,7 @@ class DetectLevelNode(Node):
         self.cv_image = None  # 현재 OpenCV 이미지
 
         self.cv_bridge = CvBridge()  # CvBridge 객체 생성
-        # __init__ 메서드 내에 추가
-        self.pub_level_crossing_state = self.create_publisher(Int8, '/level_crossing_state', 10)
-        self.pub_level_crossing_state_publisher = self.create_publisher(
-            Int8, '/pub_level_crossing_state', 10)
+
         # 이미지 발행자 생성
         if self.pub_image_type == 'compressed':
             self.pub_image_level = self.create_publisher(
@@ -202,7 +199,7 @@ class DetectLevelNode(Node):
                 Image, '/detect/image_input', self.get_image, 10)  # 원본 이미지 구독자
 
         self.create_subscription(
-            Int8, '/detect/level_crossing_order', self.level_crossing_order, 10)  # 건널목 통과 명령 구독자
+            UInt8, '/detect/level_crossing_order', self.level_crossing_order, 10)  # 건널목 통과 명령 구독자
 
         self.timer = self.create_timer(1.0/15.0, self.timer_callback)  # 1초에 15번 (약 66ms 간격) 타이머 콜백 호출
 
@@ -213,18 +210,18 @@ class DetectLevelNode(Node):
         파라미터가 변경될 때 호출되는 콜백 함수입니다.
         """
         for param in params:  # 변경된 각 파라미터에 대해 반복
-            if param.name == 'detect.level.yellow.hue_l':
-                self.hue_yellow_l = param.value  # 노란색 하위 Hue 값 업데이트
-            elif param.name == 'detect.level.yellow.hue_h':
-                self.hue_yellow_h = param.value  # 노란색 상위 Hue 값 업데이트
-            elif param.name == 'detect.level.yellow.saturation_l':
-                self.saturation_yellow_l = param.value  # 노란색 하위 Saturation 값 업데이트
-            elif param.name == 'detect.level.yellow.saturation_h':
-                self.saturation_yellow_h = param.value  # 노란색 상위 Saturation 값 업데이트
-            elif param.name == 'detect.level.yellow.lightness_l':
-                self.lightness_yellow_l = param.value  # 노란색 하위 Lightness 값 업데이트
-            elif param.name == 'detect.level.yellow.lightness_h':
-                self.lightness_yellow_h = param.value  # 노란색 상위 Lightness 값 업데이트
+            if param.name == 'detect.level.red.hue_l':
+                self.hue_red_l = param.value  # 빨간색 하위 Hue 값 업데이트
+            elif param.name == 'detect.level.red.hue_h':
+                self.hue_red_h = param.value  # 빨간색 상위 Hue 값 업데이트
+            elif param.name == 'detect.level.red.saturation_l':
+                self.saturation_red_l = param.value  # 빨간색 하위 Saturation 값 업데이트
+            elif param.name == 'detect.level.red.saturation_h':
+                self.saturation_red_h = param.value  # 빨간색 상위 Saturation 값 업데이트
+            elif param.name == 'detect.level.red.lightness_l':
+                self.lightness_red_l = param.value  # 빨간색 하위 Lightness 값 업데이트
+            elif param.name == 'detect.level.red.lightness_h':
+                self.lightness_red_h = param.value  # 빨간색 상위 Lightness 값 업데이트
         self.get_logger().info('Dynamic parameters updated.')  # 파라미터 업데이트 로그 메시지 출력
         return SetParametersResult(successful=True)  # 파라미터 설정 성공 결과 반환
 
@@ -241,14 +238,14 @@ class DetectLevelNode(Node):
         이미지 메시지를 구독하는 콜백 함수입니다.
         처리 속도 향상을 위해 프레임을 스킵할 수 있습니다.
         """
-        if self.counter % 1 != 0:  # 3프레임마다 한 번씩만 처리
+        if self.counter % 3 != 0:  # 3프레임마다 한 번씩만 처리
             self.counter += 1  # 카운터 증가
             return  # 현재 프레임 스킵
         else:
             self.counter = 1  # 카운터 리셋
 
         if self.sub_image_type == 'compressed':  # 압축 이미지인 경우
-            np_arr = np.frombuffer(image_msg.data, np.int8)  # 바이트 배열을 NumPy 배열로 변환
+            np_arr = np.frombuffer(image_msg.data, np.uint8)  # 바이트 배열을 NumPy 배열로 변환
             self.cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)  # NumPy 배열을 OpenCV 이미지로 디코딩
         else:  # 원본 이미지인 경우
             try:
@@ -261,8 +258,7 @@ class DetectLevelNode(Node):
         건널목 통과 명령 메시지를 수신하는 콜백 함수입니다.
         수신된 명령에 따라 건널목 통과 절차를 진행합니다.
         """
-        pub_level_crossing_return = Int8()  # 반환 메시지 객체 생성
-        pub_level_crossing_msg = Int8()
+        pub_level_crossing_return = UInt8()  # 반환 메시지 객체 생성
         if order_msg.data == self.StepOfLevelCrossing.pass_level.value:  # 'pass_level' 명령이 수신된 경우
             while rclpy.ok():  # ROS 2가 실행 중인 동안 반복
                 is_level_detected, _, _ = self.find_level()  # 건널목 감지 상태 확인
@@ -282,7 +278,6 @@ class DetectLevelNode(Node):
                     max_vel_msg = Float64()  # 최대 속도 메시지 생성
                     max_vel_msg.data = 0.0  # 속도를 0으로 설정 (정지)
                     # self.pub_max_vel.publish(max_vel_msg)  # (주석 처리됨) 최대 속도 발행
-                    pub_level_crossing_msg.data = 4
                     break  # 루프 종료
 
             while rclpy.ok():  # ROS 2가 실행 중인 동안 반복
@@ -295,7 +290,6 @@ class DetectLevelNode(Node):
                     # self.pub_max_vel.publish(max_vel_msg)  # (주석 처리됨) 최대 속도 발행
                     break  # 루프 종료
 
-            self.pub_level_crossing_state_publisher.publish(pub_level_crossing_msg)
             pub_level_crossing_return.data = self.StepOfLevelCrossing.exit.value  # 'exit' 단계로 반환 메시지 설정
 
         self.get_logger().info(str(pub_level_crossing_return.data))  # 반환 메시지 데이터 로그 출력
@@ -304,17 +298,17 @@ class DetectLevelNode(Node):
     def find_level(self):
         """
         이미지에서 건널목을 찾기 위한 주 함수입니다.
-        먼저 노란색 마스크를 생성하고, 블러 처리 후 사각형을 감지합니다.
+        먼저 빨간색 마스크를 생성하고, 블러 처리 후 사각형을 감지합니다.
         """
-        mask = self.mask_yellow_of_level()  # 노란색 영역 마스크 생성
+        mask = self.mask_red_of_level()  # 빨간색 영역 마스크 생성
         if mask is None: # 마스크가 None이면 (이미지가 없으면) 처리 중단
             return False, False, False
         mask = cv2.GaussianBlur(mask, (5, 5), 0)  # 가우시안 블러를 적용하여 노이즈 감소
         return self.find_rect_of_level(mask)  # 마스크에서 사각형을 찾아 건널목 상태 반환
 
-    def mask_yellow_of_level(self):
+    def mask_red_of_level(self):
         """
-        이미지에서 노란색 영역을 마스크로 추출합니다.
+        이미지에서 빨간색 영역을 마스크로 추출합니다.
         캘리브레이션 모드인 경우 필터링된 마스크 이미지를 발행합니다.
         """
         if self.cv_image is None:  # OpenCV 이미지가 없으면 None 반환
@@ -322,10 +316,10 @@ class DetectLevelNode(Node):
         image = self.cv_image.copy()  # 원본 이미지 복사
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)  # BGR 이미지를 HSV 색 공간으로 변환
 
-        # 파라미터로 설정된 노란색의 HSV 범위
-        lower_yellow = np.array([self.hue_yellow_l, self.saturation_yellow_l, self.lightness_yellow_l])  # 하위 임계값
-        upper_yellow = np.array([self.hue_yellow_h, self.saturation_yellow_h, self.lightness_yellow_h])  # 상위 임계값
-        mask = cv2.inRange(hsv, lower_yellow, upper_yellow)  # HSV 이미지에서 지정된 범위 내의 색상만 마스크로 추출
+        # 파라미터로 설정된 빨간색의 HSV 범위
+        lower_red = np.array([self.hue_red_l, self.saturation_red_l, self.lightness_red_l])  # 하위 임계값
+        upper_red = np.array([self.hue_red_h, self.saturation_red_h, self.lightness_red_h])  # 상위 임계값
+        mask = cv2.inRange(hsv, lower_red, upper_red)  # HSV 이미지에서 지정된 범위 내의 색상만 마스크로 추출
 
         if self.is_calibration_mode:  # 캘리브레이션 모드인 경우
             if self.pub_image_type == 'compressed':
@@ -335,7 +329,7 @@ class DetectLevelNode(Node):
                 img_msg = self.cv_bridge.cv2_to_imgmsg(mask, encoding='mono8')  # 마스크 이미지를 mono8 (흑백)으로 변환
                 self.pub_image_color_filtered.publish(img_msg)  # 원본 마스크 이미지 발행
 
-        mask = cv2.bitwise_not(mask)  # 마스크를 반전 (노란색이 아닌 영역을 흰색으로)
+        mask = cv2.bitwise_not(mask)  # 마스크를 반전 (빨간색이 아닌 영역을 흰색으로)
         return mask  # 반전된 마스크 반환
 
     def find_rect_of_level(self, mask):
@@ -369,7 +363,6 @@ class DetectLevelNode(Node):
 
         mean_x = 0.0  # 감지된 키포인트들의 평균 x 좌표
         mean_y = 0.0  # 감지된 키포인트들의 평균 y 좌표
-        msg_state = Int8() # 메시지 객체를 미리 생성    
 
         if len(keypts) == 3:  # 키포인트가 3개 감지된 경우 (건널목 바가 3개로 인식된 경우)
             for kp in keypts:
@@ -408,9 +401,6 @@ class DetectLevelNode(Node):
                 is_level_opened = True  # 건널목이 열렸다고 판단
                 self.stop_bar_state = 'go'  # 정지 바 상태를 'go'로 설정
                 self.get_logger().info(self.stop_bar_state)  # 상태 로그 출력
-                msg_state.data = 1 # 'go' 상태를 나타내는 값
-                self.pub_level_crossing_state.publish(msg_state) # 발행 추가
-
             else:
                 # 그 외의 경우 (바가 수평에 가까운 경우) 기존 선형성 및 거리 확인 로직 수행
                 is_rects_linear = fnCheckLinearity(point1, point2, point3)  # 세 점의 선형성 확인
@@ -425,21 +415,14 @@ class DetectLevelNode(Node):
                         is_level_detected = True  # 건널목 감지됨
                         self.stop_bar_state = 'slowdown'  # 'slowdown' 상태로 설정
                         self.get_logger().info(self.stop_bar_state)  # 상태 로그 출력
-                        msg_state.data = 2 # 'slowdown' 상태를 나타내는 값
-                        self.pub_level_crossing_state.publish(msg_state) # 발행 추가
                     else:  # 바가 가까이 있으면
                         is_level_close = True  # 건널목 근접
                         self.stop_bar_state = 'stop'  # 'stop' 상태로 설정
                         self.get_logger().info(self.stop_bar_state)  # 상태 로그 출력
-                        msg_state.data = 4 # 'stop' 상태 (control_lane에서 정지시키는 값)
-                        self.pub_level_crossing_state.publish(msg_state) # 발행 추가
 
         elif len(keypts) <= 1:  # 키포인트가 1개 이하로 감지된 경우 (바가 없거나, 너무 적게 감지된 경우)
             is_level_opened = True  # 건널목이 열렸다고 판단
             self.stop_bar_state = 'go'  # 'go' 상태로 설정
-            self.get_logger().info(self.stop_bar_state)
-            msg_state.data = 3 # 키포인트 부족 시 'go' 또는 기본 주행 상태
-            self.pub_level_crossing_state.publish(msg_state) # 발행 추가
 
         # 최종 결과 이미지 발행
         if self.pub_image_type == 'compressed':
