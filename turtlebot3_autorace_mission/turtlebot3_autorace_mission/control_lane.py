@@ -119,9 +119,9 @@ class ControlLane(Node):
         self.avoid_active = False
         self.avoid_twist = Twist()
 
-        self.MAX_ANGULAR_Z = 1.0 # Maximum angular velocity
-        self.MAX_ROBOT_LINEAR_X = 0.12 # 터틀봇3 최대 선형 속도
-        self.MIN_ROBOT_LINEAR_X = -0.12 # 터틀봇3 최소 선형 속도
+        self.MAX_ANGULAR_Z = 2.0 # Maximum angular velocity
+        self.MAX_ROBOT_LINEAR_X = 0.22 # 터틀봇3 최대 선형 속도
+        self.MIN_ROBOT_LINEAR_X = -0.22 # 터틀봇3 최소 선형 속도
 
 
     def odom_callback(self, msg):
