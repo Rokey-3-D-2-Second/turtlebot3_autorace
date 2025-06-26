@@ -43,10 +43,12 @@ setup(
             'detect_lane = turtlebot3_autorace_detect.detect_lane:main',
             'detect_level_crossing = turtlebot3_autorace_detect.detect_level_crossing:main',
             'detect_level_crossing_sign = \
-                turtlebot3_autorace_detect.detect_level_crossing_sign:main',
+            turtlebot3_autorace_detect.detect_level_crossing_sign:main',
             'detect_parking_sign = turtlebot3_autorace_detect.detect_parking_sign:main',
             'detect_traffic_light = turtlebot3_autorace_detect.detect_traffic_light:main',
             'detect_tunnel_sign = turtlebot3_autorace_detect.detect_tunnel_sign:main',
+            'detect_stop_sign = turtlebot3_autorace_detect.detect_stop_sign:main',
+            'detect_line = turtlebot3_autorace_detect.detect_line:main',
         ],
     },
 )

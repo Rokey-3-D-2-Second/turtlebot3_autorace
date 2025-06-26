@@ -210,7 +210,7 @@ class DetectLane(Node):
         # Change the frame rate by yourself. Now, it is set to 1/3 (10fps).
         # Unappropriate value of frame rate may cause huge delay on entire recognition process.
         # This is up to your computer's operating power.
-        if self.counter % 1 != 0:
+        if self.counter % 3 != 0:
             self.counter += 1
             return
         else:
