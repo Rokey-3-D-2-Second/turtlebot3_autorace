@@ -37,10 +37,10 @@ def generate_launch_description():
         ('/camera/image_calib/compressed', '/image_extrinsic_calib/compressed')
     ]
     remappings_compensation = [
-        ('/camera/image_input', '/image_rect_color'),
+        # ('/camera/image_input', '/image_rect_color'),
         ('/camera/image_input/compressed', '/image_rect_color/compressed'),
-        ('/camera/image_output', '/image_compensated'),
-        ('/camera/image_output/compressed', '/image_compensated/compressed')
+        ('/camera/image_output', '/camera/image_compensated'),
+        # ('/camera/image_output/compressed', '/image_compensated/compressed')
     ]
 
     image_projection_node = Node(

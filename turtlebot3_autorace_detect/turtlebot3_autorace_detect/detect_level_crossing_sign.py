@@ -102,7 +102,7 @@ class DetectSign(Node):
         dir_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
         dir_path = os.path.join(dir_path, 'image')
 
-        self.img_stop = cv2.imread(dir_path + '/stop.png', 0)
+        self.img_stop = cv2.imread(dir_path + '/stop3.png', 0)
         
         self.kp_stop, self.des_stop = self.sift.detectAndCompute(self.img_stop, None)
 
@@ -159,7 +159,7 @@ class DetectSign(Node):
         roi_y = 0             # 맨 위에서 시
         cv_image_roi = cv_image_input[roi_y:roi_y+roi_h, roi_x:roi_x+roi_w]
 
-        MIN_MATCH_COUNT = 7
+        MIN_MATCH_COUNT = 5
         MIN_MSE_DECISION = 50000
 
         # find the keypoints and descriptors with SIFT
@@ -212,9 +212,6 @@ class DetectSign(Node):
         
         # 건널목 상태 메시지 발행
         self.level_crossing_state_publisher.publish(level_crossing_msg)
-
-
-        image_out_num = 2  # 매칭 시각화 이미지 출력
 
         # 이미지 퍼블리시 (인식 여부에 따라 다르게)
         if image_out_num == 1:

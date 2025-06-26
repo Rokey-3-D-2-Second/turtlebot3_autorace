@@ -151,12 +151,18 @@ class DetectLevelNode(Node):
         )
 
         # delcare parameters
-        self.declare_parameter('detect.level.red.hue_l', 0, descriptor=hue_l_descriptor)
-        self.declare_parameter('detect.level.red.hue_h', 179, descriptor=hue_h_descriptor)
-        self.declare_parameter('detect.level.red.saturation_l', 24, descriptor=sat_l_descriptor)
-        self.declare_parameter('detect.level.red.saturation_h', 255, descriptor=sat_h_descriptor)
-        self.declare_parameter('detect.level.red.lightness_l', 207, descriptor=light_l_descriptor)
-        self.declare_parameter('detect.level.red.lightness_h', 255, descriptor=light_h_descriptor)
+        # self.declare_parameter('detect.level.red.hue_l', 0, descriptor=hue_l_descriptor)
+        # self.declare_parameter('detect.level.red.hue_h', 179, descriptor=hue_h_descriptor)
+        # self.declare_parameter('detect.level.red.saturation_l', 24, descriptor=sat_l_descriptor)
+        # self.declare_parameter('detect.level.red.saturation_h', 255, descriptor=sat_h_descriptor)
+        # self.declare_parameter('detect.level.red.lightness_l', 207, descriptor=light_l_descriptor)
+        # self.declare_parameter('detect.level.red.lightness_h', 255, descriptor=light_h_descriptor)
+        self.declare_parameter('detect.level.yellow.hue_l', 0, descriptor=hue_l_descriptor)
+        self.declare_parameter('detect.level.yellow.hue_h', 179, descriptor=hue_h_descriptor)
+        self.declare_parameter('detect.level.yellow.saturation_l', 24, descriptor=sat_l_descriptor)
+        self.declare_parameter('detect.level.yellow.saturation_h', 255, descriptor=sat_h_descriptor)
+        self.declare_parameter('detect.level.yellow.lightness_l', 207, descriptor=light_l_descriptor)
+        self.declare_parameter('detect.level.yellow.lightness_h', 255, descriptor=light_h_descriptor)
 
         self.declare_parameter('is_detection_calibration_mode', False)  # 캘리브레이션 모드 여부 파라미터
 

@@ -52,8 +52,7 @@ def generate_launch_description():
             ('/detect/image_output', '/detect/image_level'),
             ('/detect/image_output/compressed', '/detect/image_level/compressed'),
             ('/detect/image_output_sub1', '/detect/image_level_color_filtered'),
-            ('/detect/image_output_sub1/compressed',
-                '/detect/image_level_color_filtered/compressed'),
+            ('/detect/image_output_sub1/compressed', '/detect/image_level_color_filtered/compressed'),
         ]
     )
 

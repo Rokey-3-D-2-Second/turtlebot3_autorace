@@ -9,7 +9,11 @@ def generate_launch_description():
             package='image_proc',
             plugin='image_proc::RectifyNode',
             name='rectify_node',
-            parameters=[{'queue_size': 20}]
+            parameters=[{'queue_size': 20}],
+            remappings=[
+                ('image', 'camera/image'),
+                ('camera_info', 'camera/camera_info')
+            ]
         ),
         ComposableNode(
             package='image_proc',

@@ -6,7 +6,8 @@ import os
 from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
-    namespace = 'tb3_0/camera'
+    # namespace = 'tb3_0/camera'
+    namespace = ''
 
     image_proc_container = ComposableNodeContainer(
         name='image_proc_container',
@@ -61,13 +62,14 @@ def generate_launch_description():
         remappings=[
             ('/detect/image_input', 'image_projected'),
             ('/detect/image_output', 'image_lane'),
+            ('/detect/image_output/compressed', 'detect/image_lane/compressed'),
             ('/detect/image_output_sub1', 'image_white_lane_marker'),
             ('/detect/image_output_sub2', 'image_yellow_lane_marker')
         ]
     )
 
     return LaunchDescription([
-        image_proc_container,
+        # image_proc_container,
         image_projection_node,
         detect_lane_node
     ])
