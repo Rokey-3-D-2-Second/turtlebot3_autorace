@@ -29,6 +29,8 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import CompressedImage
 from sensor_msgs.msg import Image
+# from geometry_msgs.msg import Twist  # Twist 메시지 제거
+from std_msgs.msg import Int8  # Int8 메시지 추가
 
 
 class DetectTrafficLight(Node):
@@ -177,6 +179,15 @@ class DetectTrafficLight(Node):
         self.stop_count = 0
         self.off_traffic = False
 
+        # 차량 속도 제어 퍼블리셔 제거
+        # self.cmd_vel_publisher = self.create_publisher(Twist, '/cmd_vel', 10) # 제거
+        # self.current_speed = 0.0 # 제거
+
+        # 신호등 상태 퍼블리셔 추가
+        self.traffic_light_state_publisher = self.create_publisher(
+            Int8, '/traffic_light_state', 10)
+
+
         time.sleep(1)
         self.timer = self.create_timer(0.1, self.timer_callback)
 
@@ -240,7 +251,7 @@ class DetectTrafficLight(Node):
 
     def get_image(self, image_msg):
         # Processing every 3 frames to reduce frame processing load
-        if self.counter % 3 != 0:
+        if self.counter % 1 != 0:
             self.counter += 1
             return
         else:
@@ -266,9 +277,12 @@ class DetectTrafficLight(Node):
         cv_image_mask_red = self.mask_red_traffic_light()
         cv_image_mask_red = cv2.GaussianBlur(cv_image_mask_red, (5, 5), 0)
         detect_red = self.find_circle_of_traffic_light(cv_image_mask_red, 'red')
+        
+        red_light_detected = False # 빨간불 감지 여부 플래그
         if detect_red:
             cv2.putText(self.cv_image, 'RED', (self.point_x, self.point_y),
                         cv2.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 255))
+            red_light_detected = True # 빨간불 감지됨
 
         cv_image_mask_yellow = self.mask_yellow_traffic_light()
         cv_image_mask_yellow = cv2.GaussianBlur(cv_image_mask_yellow, (5, 5), 0)
@@ -284,12 +298,59 @@ class DetectTrafficLight(Node):
             cv2.putText(self.cv_image, 'GREEN', (self.point_x, self.point_y),
                         cv2.FONT_HERSHEY_DUPLEX, 0.5, (0, 255, 0))
 
+        # 신호등 상태 메시지 생성 및 발행
+        traffic_light_msg = Int8()
+        if red_light_detected:
+            traffic_light_msg.data = 0  # 빨간불 (정지)
+            self.get_logger().info('Red light detected. Publishing state: 0 (STOP)')
+        elif detect_green:
+            traffic_light_msg.data = 1  # 녹색불 (주행)
+            self.get_logger().info('Green light detected. Publishing state: 1 (GO)')
+        elif detect_yellow:
+            traffic_light_msg.data = 2  # 노란불 (대기/주의)
+            self.get_logger().info('Yellow light detected. Publishing state: 2 (CAUTION)')
+        else:
+            traffic_light_msg.data = 3  # 신호 없음 (기본 주행)
+            self.get_logger().info('No specific traffic light detected. Publishing state: 3 (DEFAULT)')
+
+        self.traffic_light_state_publisher.publish(traffic_light_msg)
+
+        # 기존 빨간불 감지에 따른 차량 속도 제어 로직 제거
+        # if red_light_detected:
+        #     if self.current_speed != 0.0:
+        #         self.stop_car()
+        # else:
+        #     if detect_green and self.current_speed == 0.0:
+        #          self.move_car_forward(0.1)
+        #     elif not detect_green and not detect_yellow and not detect_red and self.current_speed == 0.0:
+        #          self.move_car_forward(0.0)
+
         if self.pub_image_type == 'compressed':
             self.pub_image_traffic_light.publish(
                 self.cvBridge.cv2_to_compressed_imgmsg(self.cv_image, 'jpg'))
         else:
             self.pub_image_traffic_light.publish(
                 self.cvBridge.cv2_to_imgmsg(self.cv_image, 'bgr8'))
+
+    # stop_car() 및 move_car_forward() 함수 제거
+    # def stop_car(self):
+    #     """차량을 정지시키는 함수."""
+    #     self.get_logger().info('빨간불 감지! 자동차를 정지합니다.')
+    #     twist_msg = Twist()
+    #     twist_msg.linear.x = 0.0
+    #     twist_msg.angular.z = 0.0
+    #     self.cmd_vel_publisher.publish(twist_msg)
+    #     self.current_speed = 0.0
+
+    # def move_car_forward(self, speed):
+    #     """지정된 속도로 차량을 전진시키는 함수."""
+    #     self.get_logger().info(f'녹색불 감지 또는 기본 이동: 차량을 {speed} m/s로 움직입니다.')
+    #     twist_msg = Twist()
+    #     twist_msg.linear.x = float(speed)
+    #     twist_msg.angular.z = 0.0
+    #     self.cmd_vel_publisher.publish(twist_msg)
+    #     self.current_speed = speed
+
 
     def mask_red_traffic_light(self):
         image = np.copy(self.cv_image)
