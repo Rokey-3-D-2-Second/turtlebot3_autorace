@@ -22,12 +22,11 @@ from rclpy.node import Node
 from std_msgs.msg import Bool
 from std_msgs.msg import Float64
 
-
 class ControlLane(Node):
-
     def __init__(self):
-        super().__init__('control_lane')
-
+        super().__init__(node_name='control_lane') 
+        self.get_logger().info("ControlLane 노드 시작됨")
+        
         self.sub_lane = self.create_subscription(
             Float64,
             '/control/lane',
@@ -128,3 +127,4 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
+    
