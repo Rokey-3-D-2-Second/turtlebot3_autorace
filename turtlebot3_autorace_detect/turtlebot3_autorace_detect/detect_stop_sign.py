@@ -11,7 +11,7 @@ from rclpy.node import Node
 from rcl_interfaces.msg import ParameterDescriptor, SetParametersResult, IntegerRange
 
 from sensor_msgs.msg import Image, CompressedImage
-from std_msgs.msg import Bool, Int8
+from std_msgs.msg import Bool, Int8, UInt8
 from ament_index_python.packages import get_package_share_directory
 from enum import Enum
 
@@ -82,6 +82,7 @@ class DetectStopSign(Node):
 
         self.stop_sign_pub = self.create_publisher(Bool, '/stop_sign_detected', 10)
         self.stop_sign_state_pub = self.create_publisher(Int8, '/stop_sign_state', 10)
+        self.pub_traffic_sign = self.create_publisher(UInt8, '/detect/traffic_sign', 10)
         
         # --- (선택 사항) 미션 시작/종료 신호를 받을 구독자 ---
         # 이 토픽은 로봇이 새로운 미션 구간으로 진입하거나 미션이 재시작될 때
@@ -158,7 +159,7 @@ class DetectStopSign(Node):
         """참조 정지 표지판 이미지(stop.png)를 로드하고 SIFT 특징점을 계산합니다."""
         try:
             package_share_dir = get_package_share_directory('turtlebot3_autorace_detect')
-            stop_path = os.path.join(package_share_dir, 'image', 'stop.png')
+            stop_path = os.path.join(package_share_dir, 'image', 'stop3.png')
             
             self.img_stop = cv2.imread(stop_path, cv2.IMREAD_GRAYSCALE)
             
@@ -388,6 +389,7 @@ class DetectStopSign(Node):
 
         self.stop_sign_pub.publish(bool_msg)
         self.stop_sign_state_pub.publish(int_msg)
+        self.pub_traffic_sign.publish(int_msg)
 
         self.get_logger().info(f"📡 /stop_sign_detected 발행: {is_stop_active}, /stop_sign_state 발행: {int_msg.data} ({StopSignState(int_msg.data).name})")
 
