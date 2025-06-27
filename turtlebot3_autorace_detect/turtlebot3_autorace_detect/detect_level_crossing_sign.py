@@ -159,8 +159,8 @@ class DetectSign(Node):
         roi_y = 0             # 맨 위에서 시
         cv_image_roi = cv_image_input[roi_y:roi_y+roi_h, roi_x:roi_x+roi_w]
 
-        MIN_MATCH_COUNT = 5
-        MIN_MSE_DECISION = 50000
+        MIN_MATCH_COUNT = 6
+        MIN_MSE_DECISION = 25000
 
         # find the keypoints and descriptors with SIFT
         # kp1, des1 = self.sift.detectAndCompute(cv_image_input, None)

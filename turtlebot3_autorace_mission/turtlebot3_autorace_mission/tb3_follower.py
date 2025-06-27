@@ -25,12 +25,12 @@ class StableWaypointFollower(Node):
         self.MAX_WAYPOINTS = 1000  # 메모리 관리
         
         # 속도 제한 ↓
-        self.MAX_LIN = 0.08  # 8cm/s (기존 18cm/s)
-        self.MAX_ANG = 0.15  # 0.15 rad/s (기존 0.25)
+        self.MAX_LIN = 0.22  # 8cm/s (기존 18cm/s)
+        self.MAX_ANG = 2.84  # 0.15 rad/s (기존 0.25)
         
         # 게인 ↓
-        self.LIN_GAIN = 0.3  
-        self.ANG_GAIN = 0.15  
+        self.LIN_GAIN = 0.22  
+        self.ANG_GAIN = 2.84  
         
         # 저역통과 필터
         self.ALPHA = 0.3  # 필터 계수

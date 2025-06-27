@@ -125,12 +125,14 @@ class DetectSign(Node):
 
         # -------- [1] ROI: 위쪽 절반만 사용 --------
         h, w, _ = cv_image_input.shape
+        roi_x = w - int(w * 0.7)
+        roi_w = int(w * 0.7)
         roi_y = 0               # 시작 y좌표
         roi_h = int(h * 0.5)    # 상단 40%
-        cv_image_roi = cv_image_input[roi_y:roi_y+roi_h, :]
+        cv_image_roi = cv_image_input[roi_y:roi_y+roi_h, roi_x:roi_x+roi_w]
 
         MIN_MATCH_COUNT = 5
-        MIN_MSE_DECISION = 50000
+        MIN_MSE_DECISION = 25000
 
         # find the keypoints and descriptors with SIFT
         # kp1, des1 = self.sift.detectAndCompute(cv_image_input, None)
@@ -236,7 +238,7 @@ class DetectSign(Node):
             # kp1 좌표를 원본 이미지 기준으로 변환
             kp1_on_input = [
                 cv2.KeyPoint(
-                    kp.pt[0],
+                    kp.pt[0] + roi_x,
                     kp.pt[1] + roi_y,  # y좌표 보정
                     kp.size,
                     kp.angle,

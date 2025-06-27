@@ -479,7 +479,7 @@ class DetectTrafficLight(Node):
         params.minThreshold = 0
         params.maxThreshold = 255
         params.filterByArea = True
-        params.minArea = 50
+        params.minArea = 125
         params.maxArea = 600
         params.filterByCircularity = True
         params.minCircularity = 0.5
@@ -490,7 +490,7 @@ class DetectTrafficLight(Node):
         keypts = detector.detect(mask)
 
         height, width = mask.shape[:2]
-        roi_x_start = width // 2
+        roi_x_start = 2 * width // 3
         roi_x_end = width
         roi_y_start = height // 3
         roi_y_end = 2 * height // 3
