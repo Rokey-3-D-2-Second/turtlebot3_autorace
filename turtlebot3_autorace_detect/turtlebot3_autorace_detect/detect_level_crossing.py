@@ -337,10 +337,10 @@ class DetectLevelNode(Node):
         
         # [ROI 적용: 우측 70%, 상단 60%]
         h, w, _ = image.shape
-        roi_x = int(w * 0.3)
+        roi_x = int(w * 0.2)
         roi_y = 0
-        roi_w = int(w * 0.7)
-        roi_h = int(h * 0.6)
+        roi_w = int(w * 0.8)
+        roi_h = int(h * 0.55)
         roi_img = image[roi_y:roi_y+roi_h, roi_x:roi_x+roi_w]
         
         # hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
@@ -378,16 +378,16 @@ class DetectLevelNode(Node):
         params.maxThreshold = 255
         params.filterByArea = True        # 영역(크기) 필터 사용
         params.minArea = 200              # Blob 최소 면적(픽셀) (바가 얇으면 더 낮춰야 함)
-        params.maxArea = 40000              # Blob 최대 면적(픽셀)        
-        params.filterByConvexity = False   # 볼록성(거의 원형에 가까운 것만) 필터
-        params.minConvexity = 0.9         # (0~1 사이, 더 낮추면 더 많은 blob 인식)
+        params.maxArea = 40000            # Blob 최대 면적(픽셀)
+        params.filterByConvexity = True   # 볼록성(거의 원형에 가까운 것만) 필터
+        params.minConvexity = 0.7         # (0~1 사이, 더 낮추면 더 많은 blob 인식)
 
         # --- Blob(키포인트) 검출기 생성 및 검출 ---
         detector = cv2.SimpleBlobDetector_create(params)
         keypts = detector.detect(mask)    # 마스크에서 Blob(keypoint) 검출
 
         # --- ROI offset 보정 (마스크가 ROI였으면, 원본 좌표로 변환) ---
-        roi_x = int(self.cv_image.shape[1] * 0.3)
+        roi_x = int(self.cv_image.shape[1] * 0.2)
         roi_y = 0
         # Blob 키포인트 좌표를 원본 영상 위치로 이동 (cv2.drawKeypoints에서 위치 정확히 매칭)
         keypts = [
